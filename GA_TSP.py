@@ -91,7 +91,7 @@ class TSP:
     def survivial_select(self,mutation_list,fitness_list):
         child_fitness = self.cal_fitness(mutation_list)
         fitness = list(child_fitness+fitness_list)
-        fitness.sort(key=lambda srt: srt[1],reverse=True)
+        fitness.sort(key=lambda srt: srt[1],reverse=False)
         return fitness[:len(fitness_list)]
     def main(self):
         init_population = self.city_init()
@@ -109,18 +109,18 @@ class TSP:
             print('*'+str(count)+' 第%s次迭代:' % count,end=' ')
             print('fitness最大值為',survival_list[0][1])
             print('種群為',survival_list[0][0])
-        '''
+
         X=[]
         Y=[]
         for i in survival_list[0][0]:
             x = self.city[i][0]
-            y = self.city[i][0]
+            y = self.city[i][1]
             X.append(x)
             Y.append(y)
         plt.plot(X,Y,'-o')
         plt.title("satisfactory solution of TS:%d"%(int(survival_list[0][1])))
         plt.show()
-        '''
+
 if __name__ == "__main__":
     tsp = TSP(100,25)
     tsp.main()
