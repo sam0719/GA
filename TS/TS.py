@@ -1,5 +1,9 @@
 import numpy as np
 import random
+import matplotlib.pyplot as plt
+from matplotlib.path import Path
+import matplotlib.patches as patches
+
 class TS:
     def __init__(self,limit):
         self.limit = limit#迭代次數
@@ -16,14 +20,15 @@ class TS:
         self.current_path = self.path#當前路徑
         self.best_path = self.path#最佳路徑
         self.best_path_length = self.cal_fitness(self.best_path)
-
+        
         
     def init_path(self):
-        temp = [x for x in range(self.city_num)]#初始化行走路徑
+        temp = [x for x in range(1,self.city_num,1)]#初始化行走路徑
         random.shuffle(temp)#亂序
         return temp
     def cal_fitness(self,path):#path_list:路徑列表
-        sum = self.cal_distance(path[0],path[-1])#第一個到最後一個城市的距離
+        sum = self.cal_distance(0,path[-1])#第一個到最後一個城市的距離
+        sum += self.cal_distance(0,path[1])
         for i in range(len(path)-1):
             sum += self.cal_distance(path[i],path[i+1])#路徑表第二個城市到最後一個的總距離
         return sum
@@ -65,7 +70,16 @@ if  __name__ == "__main__":
             if min_move in ts.tabu_list:
                 list(ts.tabu_list).remove(min_move)
             list(ts.tabu_list).append(min_move)
-            '''
+        else:
+            while min_l in ts.tabu_list:
+                sort_index = sort_index[1:]
+                min_l = new_length[sort_index[0]]
+                min_path = new_path[sort_index[0]]
+                min_move = moves[sort_index[0]]
+            ts.current_path = min_path
+            #assert ts.current_path != ts.best_path
+            list(ts.tabu_list).append(min_move)
+        '''
         else:
             # 找到不在禁忌表中的操作
             while min_move in ts.tabu_list:
@@ -84,7 +98,28 @@ if  __name__ == "__main__":
         #ts.iter_y.append(ts.best_path_length)
         print(i, ts.best_path_length)
         print(ts.best_path)
-    
+    ts.best_path.append(0)
+    ts.best_path.insert(0,0)
+    print(ts.best_path)
+    verts = [
+        (ts.city_xy[0][0],ts.city_xy[0][1])
+    ]
+    codes = [
+        Path.MOVETO
+    ]
+    for i in ts.best_path[1:-1]:
+        verts.append((ts.city_xy[i][0],ts.city_xy[i][1]))
+        codes.append(Path.LINETO)
+    verts.append((ts.city_xy[-1][0],ts.city_xy[-1][1]))
+    codes.append(Path.CLOSEPOLY)
+    path = Path(verts, codes)
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    patch = patches.PathPatch(path, facecolor='none', lw=2)
+    ax.add_patch(patch)
+    ax.set_xlim(0,8000)
+    ax.set_ylim(0,8000)
+    plt.show()
     
 
     
