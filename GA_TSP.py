@@ -40,7 +40,7 @@ class TSP:
             sum += self.cal_distance(path_list[i],path_list[i+1])#路徑表第二個城市到最後一個的總距離
         return path_list,sum
     def cal_distance(self,index1,index2): #index:城市表的索引   
-        distance = ((self.city_xy[index2][0]-self.city_xy[index2][1])**2+(self.city_xy[index1][0]-self.city_xy[index1][1])**2)**0.5
+        distance = ((self.city_xy[index2][0]-self.city_xy[index1][0])**2+(self.city_xy[index2][1]-self.city_xy[index1][1])**2)**0.5
         return distance
     def cross(self,parent_list):#交叉
         r1 = numpy.random.randint(self.population_size*self.survival_rate)
@@ -110,16 +110,17 @@ class TSP:
             print('fitness最大值為',survival_list[0][1])
             print('種群為',survival_list[0][0])
 
+        
+        plt.subplot(2,2,3)
         X=[]
         Y=[]
-        
-        for i in survival_list[0][0]:
-            x = self.city_xy[i][0]
-            y = self.city_xy[i][1]
-            X.append(x)
-            Y.append(y)
-        plt.plot(X,Y,'-o')
-        plt.title("satisfactory solution of TS:%d"%(int(survival_list[0][1])))
+        for i in range(self.city_num-1):
+            x=survival_list[0][0][i]
+            X.append(self.city_xy[x][0])
+            Y.append(self.city_xy[x][1])
+        plt.plot(X,Y)
+        plt.axis([0,8000,0,8000])
+        plt.title('result')
         plt.show()
         
 
