@@ -46,10 +46,16 @@ class GA:
             self.bag_capacity = self.bag_capacity - self.weight[i][0] * self.weight[i][1]
             self.sum_price += self.price[i] * self.weight[i][1]
             i += 1
-        self.bag_capacity = self.bag_capacity + self.weight[i-1][0] * self.weight[i-1][1]
-        self.sum_price = self.sum_price - self.price[i-1] * self.weight[i-1][1]
-        self.weight = self.weight[i-1:]
-        self.price = self.price[i-1:]
+        if self.bag_capacity + self.weight[i-1][0] * 9 > 0:
+            self.bag_capacity = self.bag_capacity + self.weight[i-1][0] * self.weight[i-1][1]
+            self.sum_price = self.sum_price - self.price[i-1] * self.weight[i-1][1]
+            self.weight = self.weight[i-1:]
+            self.price = self.price[i-1:]
+        else:
+            self.bag_capacity = self.bag_capacity + self.weight[i-1][0] * self.weight[i-1][1] + self.weight[i-2][0] * 10
+            self.sum_price = self.sum_price - self.price[i-1] * self.weight[i-1][1] - self.price[i-2] * 10
+            self.weight = self.weight[i-2:]
+            self.price = self.price[i-2:]
         '''
         cp值高的先選，去掉對應的內容
         '''
@@ -94,7 +100,7 @@ class GA:
         sum_fit = sum(fit)
         for j in range(int(self.number*self.survival_rate)):
             if sum_fit == 0:
-                parent_list.append(0)
+                parent_list.append(fitness_list[0][0])
             else:
                 accumulator = 0.0
                 random_num = numpy.random.randint(0,high=sum_fit)
@@ -149,7 +155,7 @@ class GA:
         init_population = self.initial()
         fitness_list = self.cal_fitness(init_population)
         count = 0
-        f = open("data/GA.epin",mode='a',encoding='utf8')
+        f = open("data/GA.epin",mode='w',encoding='utf8')
         f.write('Particle:\n')
         while count<self.limit:
             parent = self.select(fitness_list)
@@ -192,7 +198,7 @@ class GA:
 if __name__ == '__main__':
     start_time = time()
     print(start_time)
-    ga = GA(300,200)
+    ga = GA(200,300)
     ga.main()
     end_time = time()
     print(end_time)
