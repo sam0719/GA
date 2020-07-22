@@ -155,7 +155,7 @@ class GA:
         init_population = self.initial()
         fitness_list = self.cal_fitness(init_population)
         count = 0
-        f = open("data/GA.epin",mode='w',encoding='utf8')
+        f = open("data/GA_mkp.epin",mode='w',encoding='utf8')
         f.write('Particle:\n')
         while count<self.limit:
             parent = self.select(fitness_list)
