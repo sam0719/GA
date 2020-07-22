@@ -3,7 +3,10 @@ from time import *
 import math
 class GA:
     def __init__(self,number,limit):
+        self.Segmentation_index = 0
+        self.old_price = []
         self.weight = [(1,10),(2,10),(3,10),(4,10),(5,10),(6,10),(7,10),(8,10),(10,10),(9,10)]
+        self.new_weight = self.weight
         self.price = [6,7,8,9,10,11,12,13,15,14]
         self.sum_price = 0
         self.cp_value =[]
@@ -20,19 +23,30 @@ class GA:
     def transform(self):
         new_weight = []
         new_price = []
-        for i in range(len(self.weight)):
+        for i in range(len(self.new_weight)):
             k=0
             sum =1
-            while self.weight[i][1] - sum > 0:
+            while self.new_weight[i][1] - sum > 0:
                 k += 1
                 sum += 2**k
             for j in range(k):
-                new_weight.append(self.weight[i][0]*(2**j))
+                new_weight.append(self.new_weight[i][0]*(2**j))
                 new_price.append(self.price[i]*(2**j))
-            new_weight.append(self.weight[i][0]*(self.weight[i][1]-(sum-2**k)))
-            new_price.append(self.price[i]*(self.weight[i][1]-(sum-2**k)))
+            new_weight.append(self.new_weight[i][0]*(self.new_weight[i][1]-(sum-2**k)))
+            new_price.append(self.price[i]*(self.new_weight[i][1]-(sum-2**k)))
         return new_weight,new_price
-    def takeSecond(self,elem):
+    def decode(self,population): #將縮短后的種群還原為原來長度
+        new_population=''
+        for i in range(len(self.weight)-self.Segmentation_index):
+            sum = 0
+            key = int(math.log(self.weight[i+self.Segmentation_index][1],2))
+            for j in range(key):
+                new_population += population[j+i*(key+1)] * (2 ** j)
+                sum += (2 ** j)
+            new_population += population[j+1+i*(key+1)] * (self.weight[i][1] - sum)
+        new_population = '1' * 10 * self.Segmentation_index + new_population
+        return new_population
+    def takeSecond(self,elem):#好像沒用
         return elem[1]    
     def initial(self):#種群初始化
         #對cp值和對應的weight,price進行大到小的排序
@@ -40,31 +54,38 @@ class GA:
         sorted_points = sorted(points,reverse=True)
         self.cp_value = [point[0] for point in sorted_points]
         self.weight = [point[1] for point in sorted_points]
+        self.new_weight = self.weight
         self.price = [point[2] for point in sorted_points]
         i = 0
-        while self.bag_capacity > 0:
+        while self.bag_capacity > 0: #直到背包承受不下時
             self.bag_capacity = self.bag_capacity - self.weight[i][0] * self.weight[i][1]
             self.sum_price += self.price[i] * self.weight[i][1]
             i += 1
-        if self.bag_capacity + self.weight[i-1][0] * 9 > 0:
+        if self.bag_capacity + self.weight[i-1][0] * 9 > 0: #
             self.bag_capacity = self.bag_capacity + self.weight[i-1][0] * self.weight[i-1][1]
             self.sum_price = self.sum_price - self.price[i-1] * self.weight[i-1][1]
-            self.weight = self.weight[i-1:]
+            #分割重量和價值列表
+            self.Segmentation_index = i-1#記錄分割時的位置
+            #self.old_weight = self.weight[:i-1]
+            self.new_weight = self.weight[i-1:]
+            self.old_price = self.price[:i-1]
             self.price = self.price[i-1:]
         else:
+            self.Segmentation_index = i-2#記錄分割時的位置
             self.bag_capacity = self.bag_capacity + self.weight[i-1][0] * self.weight[i-1][1] + self.weight[i-2][0] * 10
             self.sum_price = self.sum_price - self.price[i-1] * self.weight[i-1][1] - self.price[i-2] * 10
-            self.weight = self.weight[i-2:]
+            #self.old_weight = self.weight[:i-2]
+            self.new_weight = self.weight[i-2:]
+            self.old_price = self.price[:i-2]
             self.price = self.price[i-2:]
         '''
         cp值高的先選，去掉對應的內容
         '''
-        self.weight,self.price = self.transform()
-        #temp = int(self.bag_capacity/self.weight[0])
+        self.new_weight,self.price = self.transform()
         init_population = ''
         population_list = []
         for k in range(self.number):
-            for j in range(len(self.weight)):#每樣物品10個
+            for j in range(len(self.new_weight)):#
                 if numpy.random.random()<0.5:
                     init_population += '0'
                 else:
@@ -76,7 +97,7 @@ class GA:
         sum_weight = 0
         sum_price = 0
         for j in range(len(population_list[index])):
-            sum_weight = sum_weight + (int(population_list[index][j])*self.weight[j])
+            sum_weight = sum_weight + (int(population_list[index][j])*self.new_weight[j])
             sum_price  = sum_price+(int(population_list[index][j])*self.price[j])
         return sum_weight,sum_price
     def cal_fitness(self,population_list):
@@ -134,7 +155,7 @@ class GA:
     def mutation(self,children_list):
         mutation_list = []
         for i in range(len(children_list)):
-            for j in range(len(self.weight)):
+            for j in range(len(self.new_weight)):
                 if(numpy.random.random(size=None)<self.mutation_rate):
                     if(children_list[i][j] == "0"):
                         temp = list(children_list[i])
@@ -182,14 +203,19 @@ class GA:
             #        print('%s,0,bit%i'%(survival_list[i][0][j],j+1),end=' ')
             #        print('/',end='')
             #    print('')
-            print('\rfitness最大值為',survival_list[0][1])
+            new_fitness = survival_list[0][1]
+            for i in range(len(self.old_price)):
+                new_fitness += self.old_price[i] * 10
+            print('\rfitness最大值為',new_fitness)
             print('\r種群為',survival_list[0][0])
+        new_population = self.decode(survival_list[0][0])
+        print('最終種群為',new_population)    
         c = 2
         multi_solution = {}
         multi_solution[survival_list[0][0]] = survival_list[0][1]#dict
         for i in range(1,len(survival_list),1):
             if survival_list[i][1]  == survival_list[0][1] and survival_list[i][0] not in multi_solution:
-                print("第"+str(c)+"種解為:",survival_list[i][0])#求多種解
+                print("第"+str(c)+"種解為:",self.decode(survival_list[i][0]))#求多種解
                 c+=1
                 multi_solution[survival_list[i][0]] = survival_list[i][1]
         f.close()
