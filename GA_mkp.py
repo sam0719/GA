@@ -57,27 +57,29 @@ class GA:
         self.new_weight = self.weight
         self.price = [point[2] for point in sorted_points]
         i = 0
-        while self.bag_capacity > 0: #直到背包承受不下時
+        while self.bag_capacity - self.weight[i][0] * self.weight[i][1] > 0: #直到背包承受不下時
             self.bag_capacity = self.bag_capacity - self.weight[i][0] * self.weight[i][1]
             self.sum_price += self.price[i] * self.weight[i][1]
             i += 1
-        if self.bag_capacity + self.weight[i-1][0] * 9 > 0: #
-            self.bag_capacity = self.bag_capacity + self.weight[i-1][0] * self.weight[i-1][1]
-            self.sum_price = self.sum_price - self.price[i-1] * self.weight[i-1][1]
+        #if self.bag_capacity % self.weight[i][0] == 0:
+        if self.bag_capacity % self.weight[i][0] != 0: 
+           #self.bag_capacity = self.bag_capacity + self.weight[i][0] * self.weight[i][1]
+            #self.sum_price = self.sum_price - self.price[i] * self.weight[i][1]
             #分割重量和價值列表
-            self.Segmentation_index = i-1#記錄分割時的位置
+            self.Segmentation_index = i#記錄分割時的位置
             #self.old_weight = self.weight[:i-1]
-            self.new_weight = self.weight[i-1:]
-            self.old_price = self.price[:i-1]
-            self.price = self.price[i-1:]
+            self.new_weight = self.weight[i:]
+            self.old_price = self.price[:i]
+            self.price = self.price[i:]
         else:
-            self.Segmentation_index = i-2#記錄分割時的位置
+            self.Segmentation_index = i-1#記錄分割時的位置
             self.bag_capacity = self.bag_capacity + self.weight[i-1][0] * self.weight[i-1][1] + self.weight[i-2][0] * 10
             self.sum_price = self.sum_price - self.price[i-1] * self.weight[i-1][1] - self.price[i-2] * 10
             #self.old_weight = self.weight[:i-2]
-            self.new_weight = self.weight[i-2:]
-            self.old_price = self.price[:i-2]
-            self.price = self.price[i-2:]
+            self.new_weight = self.weight[i-1:]
+            self.old_price = self.price[:i-1]
+            self.price = self.price[i-1:]
+        
         '''
         cp值高的先選，去掉對應的內容
         '''
@@ -154,6 +156,15 @@ class GA:
         return children_list
     def mutation(self,children_list):
         mutation_list = []
+        '''
+        for i in range(len(children_list)):        
+            if(numpy.random.random() < self.mutation_rate):
+                r1 = numpy.random.randint(len(children_list[i]))
+                r2 = numpy.random.randint(len(children_list[i]))
+                children_list[r1],children_list[r2] = children_list[r2],children_list[r1]
+                mutation_list.append(children_list[i])
+        '''  
+        #隨機選一個染色體 隨機選1位 0變1 1變0
         for i in range(len(children_list)):
             for j in range(len(self.new_weight)):
                 if(numpy.random.random(size=None)<self.mutation_rate):
@@ -165,7 +176,8 @@ class GA:
                         temp = list(children_list[i])
                         temp[j] = "0"
                         children_list[i] = "".join(temp)
-            mutation_list.append(children_list[i])
+                    mutation_list.append(children_list[i])
+        
         return mutation_list
     def survivalselect(self,children_list,parent_list):
         child_fitness = self.cal_fitness(children_list)
@@ -224,7 +236,7 @@ class GA:
 if __name__ == '__main__':
     start_time = time()
     print(start_time)
-    ga = GA(200,300)
+    ga = GA(200,500)
     ga.main()
     end_time = time()
     print(end_time)
