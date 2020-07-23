@@ -9,38 +9,78 @@ class TSP:
         self.survival_rate = 0.2#生存率
         self.limit = limit
         self.city_list = []
+        self.filename = 'burma14'
         self.mutation_rate = 0.1#突變率
-        #48個城市坐標
-        self.city_xy = [[6734,1453],[2233,10],[5530,1424],[401,841],[3082,1644],[7608,4458],[7573,3716],[7265,1268],[6898,1885],[1112,2049],[5468,2606],[5989,2873],[4706,2674],[4612,2035],[6347,2683],[6107,669],[7611,5184],[7462,3590],[7732,4723],[5900,3561],[4483,3369],[6101 ,1110],[5199 ,2182],[1633 ,2809],[4307 ,2322], [675 ,1006],[7555 ,4819],[7541 ,3981],[3177 ,756],[7352 ,4506],[7545 ,2801],[3245 ,3305],[6426 ,3173],[4608 ,1198],  [23 ,2216],[7248 ,3779],[7762 ,4595],[7392 ,2244],[3484 ,2829],[6271 ,2135],[4985 ,140],[1916 ,1569],[7280 ,4899],[7509 ,3239],  [10 ,2676],[6807 ,2993],[5185 ,3258],[3023 ,1942]]
+        self.dim,self.city_xy,self.EDGE_WEIGHT_TYPE = self.read_file(self.filename)
         self.city_num = len(self.city_xy)#城市數量
     def init_path(self):#初始化路徑
-        temp = [x for x in range(1,self.city_num,1)]#初始化行走路徑
+        temp = [x for x in range(1,self.city_num+1,1)]#初始化行走路徑
         random.shuffle(temp)#亂序
         return temp
     def select(self,fitness_list):#輪盤賭選擇
-        sum_fit = 0
-        parent_list = []
-        fit=[]
+        sum_fit,random_num = 0,0
+        parent_list,fit = [],[]
         for i in range(len(fitness_list)):
-            fit.append(fitness_list[i][1])
+            fit.append(1/fitness_list[i][1])
         sum_fit = sum(fit)
         for i in range(int(self.population_size*self.survival_rate)):
             accumulator = 0.0
-            random_num = numpy.random.randint(0,high=sum_fit)
+            random_num = numpy.random.random()*sum_fit
             for ind,val in enumerate(fit):
                 accumulator += val
                 if accumulator >= random_num:
                     parent_list.append(fitness_list[ind])
                     break
         return parent_list
-    def cal_fitness(self,path_list):#path_list:路徑列表
-        sum = self.cal_distance(path_list[0],path_list[-1])#第一個到最後一個城市的距離
-        sum += self.cal_distance(0,path_list[0])#起始城市到第一個城市的距離
-        for i in range(len(path_list)-1):
-            sum += self.cal_distance(path_list[i],path_list[i+1])#路徑表第二個城市到最後一個的總距離
-        return path_list,sum
+        
+    def read_file(self,filename):#讀取文件 返回維度和坐標列表
+        dim = 0
+        node = []
+        EDGE_WEIGHT_TYPE = ''
+        with open("data/"+filename+".tsp",mode='r',encoding='utf8') as f:
+            for i in range(8):
+                line = f.readline()
+                if line.split(':')[0] == 'EDGE_WEIGHT_TYPE':
+                    EDGE_WEIGHT_TYPE = line.split(':')[1][1:4]
+                if line.split(':')[0] == 'DIMENSION':
+                    dim = int(line.split(':')[1].split('\n')[0])
+                if line == 'NODE_COORD_SECTION\n':
+                    for j in range(dim):
+                        line = f.readline()
+                        node.append((float(line.split('       ')[0][6:]),float(line.split('       ')[1][:5])))
+                    print(node)
+        return dim,node,EDGE_WEIGHT_TYPE
+            
+    def cal_fitness(self,individual):#individual:路徑個體 返回那條路徑的fitness
+        fitness = 0.0
+        for i in range(len(individual)-1):
+            fitness += self.cal_distance(individual[i]-1,individual[i+1]-1)
+        fitness += self.cal_distance(individual[len(individual)-1]-1,individual[0]-1)
+        return individual,fitness
     def cal_distance(self,index1,index2): #index:城市表的索引   
-        distance = ((self.city_xy[index2][0]-self.city_xy[index1][0])**2+(self.city_xy[index2][1]-self.city_xy[index1][1])**2)**0.5
+        latitude,longitude = [],[]
+        if self.EDGE_WEIGHT_TYPE == 'GEO':
+            PI = 3.141592
+            for i in (index1,index2):
+                deg = int(round(self.city_xy[i][0]))
+                min = self.city_xy[i][0] - deg
+                latitude.append(PI * (deg + 5.0 * min / 3) /180.0)
+                deg = int(round(self.city_xy[i][1]))
+                min = self.city_xy[i][1] - deg
+                longitude.append(PI * (deg + 5.0 * min / 3) /180.0)
+            '''
+            deg = int(self.city_xy[index2][0])
+            min = city_xy[index2][0] - deg
+            latitude[1] = PI * (deg + 5.0 * min / 3) /180.0
+            deg = int(self.city_xy[index2][1])
+            min = city_xy[index2][1] - deg
+            longitude[1] = PI * (deg + 5.0 * min / 3) /180.0
+            '''
+            RRR = 6378.388
+            q1 = numpy.cos(longitude[0] - longitude[1])
+            q2 = numpy.cos(latitude[0] - latitude[1])
+            q3 = numpy.cos(latitude[0] + latitude[1])
+            distance = int(RRR * numpy.arccos(0.5 * ((1.0 + q1) * q2 - (1.0 - q1) * q3)) + 1.0)
         return distance
     def cross(self,parent_list):#交叉
         r1 = numpy.random.randint(self.population_size*self.survival_rate)
@@ -87,6 +127,7 @@ class TSP:
         fitness.sort(key=lambda srt: srt[1],reverse=False)
         return fitness[:len(fitness_list)]
     def main(self):
+        #self.read_file(self.filename)
         path_list = []
         fitness_list = []
         for i in range(self.population_size):
@@ -115,7 +156,7 @@ class TSP:
         X=[]
         Y=[]
         for i in range(self.city_num-1):
-            x=survival_list[0][0][i]
+            x=survival_list[0][0][i]-1
             X.append(self.city_xy[x][0])
             Y.append(self.city_xy[x][1])
         plt.plot(X,Y)
@@ -125,5 +166,5 @@ class TSP:
         
 
 if __name__ == "__main__":
-    tsp = TSP(100,200)
+    tsp = TSP(500,100)
     tsp.main()
