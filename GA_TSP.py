@@ -4,10 +4,10 @@ import random
 import matplotlib.pyplot as plt
 
 class TSP:
-    def __init__(self,limit,population_size):
+    def __init__(self,iterator,population_size):
         self.population_size = population_size
         self.survival_rate = 0.2#生存率
-        self.limit = limit
+        self.iterator = iterator
         self.city_list = []
         self.filename = 'burma14'
         self.mutation_rate = 0.1#突變率
@@ -51,7 +51,7 @@ class TSP:
                     print(node)
         return dim,node,EDGE_WEIGHT_TYPE
             
-    def cal_fitness(self,individual):#individual:路徑個體 返回那條路徑的fitness
+    def cal_fitness(self,individual):#individual:路徑個體 返回那條路徑的distance
         fitness = 0.0
         for i in range(len(individual)-1):
             fitness += self.cal_distance(individual[i]-1,individual[i+1]-1)
@@ -62,20 +62,12 @@ class TSP:
         if self.EDGE_WEIGHT_TYPE == 'GEO':
             PI = 3.141592
             for i in (index1,index2):
-                deg = int(round(self.city_xy[i][0]))
+                deg = int(self.city_xy[i][0])
                 min = self.city_xy[i][0] - deg
                 latitude.append(PI * (deg + 5.0 * min / 3) /180.0)
-                deg = int(round(self.city_xy[i][1]))
+                deg = int(self.city_xy[i][1])
                 min = self.city_xy[i][1] - deg
                 longitude.append(PI * (deg + 5.0 * min / 3) /180.0)
-            '''
-            deg = int(self.city_xy[index2][0])
-            min = city_xy[index2][0] - deg
-            latitude[1] = PI * (deg + 5.0 * min / 3) /180.0
-            deg = int(self.city_xy[index2][1])
-            min = city_xy[index2][1] - deg
-            longitude[1] = PI * (deg + 5.0 * min / 3) /180.0
-            '''
             RRR = 6378.388
             q1 = numpy.cos(longitude[0] - longitude[1])
             q2 = numpy.cos(latitude[0] - latitude[1])
@@ -83,42 +75,27 @@ class TSP:
             distance = int(RRR * numpy.arccos(0.5 * ((1.0 + q1) * q2 - (1.0 - q1) * q3)) + 1.0)
         return distance
     def cross(self,parent_list):#交叉
-        r1 = numpy.random.randint(self.population_size*self.survival_rate)
-        r2 = numpy.random.randint(self.population_size*self.survival_rate)
-        parent1 = parent_list[r1][0]
-        parent2 = parent_list[r2][0]
-        cycle = [] #交叉点集
-        start = parent1[0]
-        cycle.append(start)
-        end = parent2[0]
-        while end != start:
-            cycle.append(end)
-            end = parent2[parent1.index(end)]
-        child = parent1[:]
-        cross_points = cycle[:]
-        if len(cross_points) < 2 :
-            cross_points = random.sample(parent1,2)
-        k = 0
-        for i in range(len(parent1)):
-            if child[i] in cross_points:
-                continue
-            else:
-                for j in range(k,len(parent2)):
-                    if parent2[j] in cross_points:
-                        continue
-                    else:
-                        child[i] = parent2[j]
-                        k = j + 1
-                        break   
-        return child
-    def mutation(self,child_list):#變異
-        mutation_list = child_list.copy()
-        r1 = numpy.random.randint(0,high=self.city_num-1)
-        r2 = numpy.random.randint(0,high=self.city_num-1)
-        while r1 == r2:
-            r2 = numpy.random.randint(0,high=self.city_num-1)
-        mutation_list[r1],mutation_list[r2] = mutation_list[r2],mutation_list[r1]
-        return mutation_list
+        index1 = numpy.random.randint(self.population_size*self.survival_rate)
+        index2 = numpy.random.randint(self.population_size*self.survival_rate)
+        parent1 = parent_list[index1][0]
+        parent2 = parent_list[index2][0]
+        r1 = numpy.random.randint(0,high=round(self.city_num/2))
+        r2 = numpy.random.randint(round(self.city_num/2),high=self.city_num)
+        g1 = parent2[r1:r2] + parent1
+        newGene = []
+        for i in g1:
+                if i not in newGene:
+                    newGene.append(i)
+        return newGene
+    def mutation(self,gene):#變異
+        path_list = [t for t in range(len(gene))]
+        order = list(random.sample(path_list, 2))
+        start, end = min(order), max(order)
+        tmp = gene[start:end]
+        # np.random.shuffle(tmp)
+        tmp = tmp[::-1]
+        gene[start:end] = tmp
+        return list(gene)
     def survivial_select(self,mutation_list,fitness_list):
         child_fitness = []
         for i in range(len(mutation_list)):
@@ -135,7 +112,7 @@ class TSP:
         for i in range(self.population_size):
             fitness_list.append(self.cal_fitness(path_list[i]))
         count = 0
-        while count < self.limit:
+        while count < self.iterator:
             parent_list = self.select(fitness_list)
             child_list = []
             while len(child_list) != self.population_size-(self.population_size*self.survival_rate):
@@ -151,20 +128,25 @@ class TSP:
             print('fitness最大值為',survival_list[0][1])
             print('種群為',survival_list[0][0])
 
-        
-        plt.subplot(2,2,3)
+        plt.figure(figsize=(10,10))
+        #plt.subplot(2,2,3)
         X=[]
         Y=[]
-        for i in range(self.city_num-1):
+        for i in range(self.city_num):
             x=survival_list[0][0][i]-1
             X.append(self.city_xy[x][0])
             Y.append(self.city_xy[x][1])
-        plt.plot(X,Y)
-        plt.axis([0,8000,0,8000])
+        X.append(X[0])
+        Y.append(Y[0])
+        survival_list[0][0].append(survival_list[0][0][0])
+        for i in range(len(X)-1):
+            plt.annotate(self.cal_distance(survival_list[0][0][i]-1,survival_list[0][0][i+1]-1),xy=((X[i]+X[i+1])/2,(Y[i]+Y[i+1])/2),xycoords='data',xytext=(+0,+4),textcoords='offset points')
+        plt.plot(X,Y,'ro',X,Y,'r-')
+        plt.axis([13,27,90,100])
         plt.title('result')
         plt.show()
         
 
 if __name__ == "__main__":
-    tsp = TSP(500,100)
+    tsp = TSP(200,100)
     tsp.main()
