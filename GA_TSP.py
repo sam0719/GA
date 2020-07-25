@@ -2,6 +2,7 @@ from time import *
 import numpy
 import random
 import matplotlib.pyplot as plt
+import re
 
 class TSP:
     def __init__(self,iterator,population_size):
@@ -13,6 +14,9 @@ class TSP:
         self.mutation_rate = 0.1#突變率
         self.dim,self.city_xy,self.EDGE_WEIGHT_TYPE = self.read_file(self.filename)
         self.city_num = len(self.city_xy)#城市數量
+        #繪圖
+        self.iter_x = []
+        self.iter_y = []
     def init_path(self):#初始化路徑
         temp = [x for x in range(1,self.city_num+1,1)]#初始化行走路徑
         random.shuffle(temp)#亂序
@@ -37,18 +41,20 @@ class TSP:
         dim = 0
         node = []
         EDGE_WEIGHT_TYPE = ''
+        line = ''
+        pattern = re.compile(r'[0-9]{2,5}[\.]?[0-9]{0,2}')
         with open("data/"+filename+".tsp",mode='r',encoding='utf8') as f:
-            for i in range(8):
+            while line[:3] != 'EOF':
                 line = f.readline()
-                if line.split(':')[0] == 'EDGE_WEIGHT_TYPE':
+                if line[:16] == 'EDGE_WEIGHT_TYPE':
                     EDGE_WEIGHT_TYPE = line.split(':')[1][1:4]
-                if line.split(':')[0] == 'DIMENSION':
+                if line[:9] == 'DIMENSION':
                     dim = int(line.split(':')[1].split('\n')[0])
                 if line == 'NODE_COORD_SECTION\n':
                     for j in range(dim):
                         line = f.readline()
-                        node.append((float(line.split('       ')[0][6:]),float(line.split('       ')[1][:5])))
-                    print(node)
+                        result = pattern.findall(line)
+                        node.append((float(result[-2]),float(result[-1])))
         return dim,node,EDGE_WEIGHT_TYPE
             
     def cal_fitness(self,individual):#individual:路徑個體 返回那條路徑的distance
@@ -73,6 +79,15 @@ class TSP:
             q2 = numpy.cos(latitude[0] - latitude[1])
             q3 = numpy.cos(latitude[0] + latitude[1])
             distance = int(RRR * numpy.arccos(0.5 * ((1.0 + q1) * q2 - (1.0 - q1) * q3)) + 1.0)
+        elif self.EDGE_WEIGHT_TYPE == 'ATT':
+            xd = self.city_xy[index1][0] - self.city_xy[index2][0]
+            yd = self.city_xy[index1][1] - self.city_xy[index2][1]
+            r = ((xd ** 2 + yd ** 2) / 10) ** 0.5
+            t = int(r)
+            if (t < r):
+                distance = t + 1
+            else:
+                distance = t
         return distance
     def cross(self,parent_list):#交叉
         index1 = numpy.random.randint(self.population_size*self.survival_rate)
@@ -92,11 +107,10 @@ class TSP:
         order = list(random.sample(path_list, 2))
         start, end = min(order), max(order)
         tmp = gene[start:end]
-        # np.random.shuffle(tmp)
         tmp = tmp[::-1]
         gene[start:end] = tmp
         return list(gene)
-    def survivial_select(self,mutation_list,fitness_list):
+    def combinate(self,mutation_list,fitness_list):
         child_fitness = []
         for i in range(len(mutation_list)):
             child_fitness.append(self.cal_fitness(mutation_list[i]))
@@ -104,9 +118,10 @@ class TSP:
         fitness.sort(key=lambda srt: srt[1],reverse=False)
         return fitness[:len(fitness_list)]
     def main(self):
-        #self.read_file(self.filename)
         path_list = []
         fitness_list = []
+        plt.rcParams['font.sans-serif']=['SimHei']
+        plt.figure(figsize=(10,5))
         for i in range(self.population_size):
             path_list.append(self.init_path())
         for i in range(self.population_size):
@@ -121,15 +136,19 @@ class TSP:
             for i in range(len(child_list)):
                 if numpy.random.random() < self.mutation_rate:
                     mutation_list[i] = self.mutation(child_list[i])
-            survival_list = self. survivial_select(mutation_list,fitness_list)
+            survival_list = self.combinate(mutation_list,fitness_list)
             fitness_list = survival_list
             count += 1
-            print('*'+str(count)+' 第%s次迭代:' % count,end=' ')
+            print('第%s次迭代:' % count,end=' ')
             print('fitness最大值為',survival_list[0][1])
             print('種群為',survival_list[0][0])
-
-        plt.figure(figsize=(10,10))
-        #plt.subplot(2,2,3)
+            self.iter_x.append(count)
+            self.iter_y.append(survival_list[0][1])
+        
+        plt.subplot(1, 2, 2)
+        plt.title('收斂圖')
+        plt.plot(self.iter_x,self.iter_y,'.')     
+        plt.subplot(1, 2, 1)
         X=[]
         Y=[]
         for i in range(self.city_num):
@@ -140,13 +159,16 @@ class TSP:
         Y.append(Y[0])
         survival_list[0][0].append(survival_list[0][0][0])
         for i in range(len(X)-1):
-            plt.annotate(self.cal_distance(survival_list[0][0][i]-1,survival_list[0][0][i+1]-1),xy=((X[i]+X[i+1])/2,(Y[i]+Y[i+1])/2),xycoords='data',xytext=(+0,+4),textcoords='offset points')
+            x = survival_list[0][0][i]-1
+            y = survival_list[0][0][i+1]-1
+            plt.annotate(self.cal_distance(x,y),xy=((X[i]+X[i+1])/2,(Y[i]+Y[i+1])/2),xycoords='data',xytext=(+0,+4),textcoords='offset points')
         plt.plot(X,Y,'ro',X,Y,'r-')
         plt.axis([13,27,90,100])
-        plt.title('result')
+        
+        plt.title('運行結果')
         plt.show()
         
 
 if __name__ == "__main__":
-    tsp = TSP(200,100)
+    tsp = TSP(200,50)
     tsp.main()
