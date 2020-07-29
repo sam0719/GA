@@ -42,9 +42,10 @@ class TSP:
         node = []
         EDGE_WEIGHT_TYPE = ''
         line = ''
-        pattern = re.compile(r'[0-9]{2,5}[\.]?[0-9]{0,2}')
+        pattern = re.compile(r'-?[0-9]{1,5}[\.]?[0-9]{0,2}')
+        pattern2 = re.compile(r'EOF')
         with open("data/"+filename+".tsp",mode='r',encoding='utf8') as f:
-            while line[:3] != 'EOF':
+            while 'EOF' not in line:
                 line = f.readline()
                 if line[:16] == 'EDGE_WEIGHT_TYPE':
                     EDGE_WEIGHT_TYPE = line.split(':')[1][1:4]
@@ -118,16 +119,18 @@ class TSP:
         fitness.sort(key=lambda srt: srt[1],reverse=False)
         return fitness[:len(fitness_list)]
     def main(self):
+        plt.rcParams['font.sans-serif']=['SimHei']
+        plt.rcParams['lines.linewidth'] = 0.5 
         path_list = []
         fitness_list = []
-        plt.rcParams['font.sans-serif']=['SimHei']
-        plt.figure(figsize=(10,5))
+        g_best = 0
         for i in range(self.population_size):
             path_list.append(self.init_path())
         for i in range(self.population_size):
             fitness_list.append(self.cal_fitness(path_list[i]))
         count = 0
         while count < self.iterator:
+            plt.clf()
             parent_list = self.select(fitness_list)
             child_list = []
             while len(child_list) != self.population_size-(self.population_size*self.survival_rate):
@@ -139,15 +142,50 @@ class TSP:
             survival_list = self.combinate(mutation_list,fitness_list)
             fitness_list = survival_list
             count += 1
+            if survival_list[0][1] != g_best:
+                g_best = survival_list[0][1]
+                g_best_count = count
             print('第%s次迭代:' % count,end=' ')
             print('fitness最大值為',survival_list[0][1])
-            print('種群為',survival_list[0][0])
+            print('族群為',survival_list[0][0])
             self.iter_x.append(count)
             self.iter_y.append(survival_list[0][1])
-        
+            '''
+            #動態圖
+            plt.ion()
+            plt.figure(figsize=(10,5))
+            plt.subplot(1, 2, 2)
+            plt.title('收斂圖')
+            plt.plot(self.iter_x,self.iter_y,'b-',self.iter_x,self.iter_y,'b.') 
+            plt.annotate((count,survival_list[0][1]),xy=(count,survival_list[0][1]),xycoords='data',xytext=(+9,+4),textcoords='offset points')
+            #plt.annotate((count,survival_list[0][1]),xy=(5,5),xycoords='figure fraction')
+
+            plt.subplot(1, 2, 1)
+            X=[]
+            Y=[]
+            for i in range(self.city_num):
+                x=survival_list[0][0][i]-1
+                X.append(self.city_xy[x][0])
+                Y.append(self.city_xy[x][1])
+            X.append(X[0])
+            Y.append(Y[0])
+            plt.plot(X,Y,'ro',X,Y,'r-')
+            plt.axis([13,27,90,100])
+            plt.title('運行結果')
+            plt.pause(0.05)
+        survival_list[0][0].append(survival_list[0][0][0])
+        for i in range(len(X)-1):
+            x = survival_list[0][0][i]-1
+            y = survival_list[0][0][i+1]-1
+            plt.annotate(self.cal_distance(x,y),xy=((X[i]+X[i+1])/2,(Y[i]+Y[i+1])/2),xycoords='data',xytext=(+0,+4),textcoords='offset points')
+        plt.ioff()
+        plt.show()
+        '''
         plt.subplot(1, 2, 2)
         plt.title('收斂圖')
-        plt.plot(self.iter_x,self.iter_y,'.')     
+        plt.plot(self.iter_x,self.iter_y,'b-')    
+        plt.plot(g_best_count,g_best,'b.')
+        plt.annotate((g_best_count,g_best),xy=(g_best_count,g_best),xycoords='data',xytext=(-15,-10),textcoords='offset points') 
         plt.subplot(1, 2, 1)
         X=[]
         Y=[]
@@ -163,11 +201,9 @@ class TSP:
             y = survival_list[0][0][i+1]-1
             plt.annotate(self.cal_distance(x,y),xy=((X[i]+X[i+1])/2,(Y[i]+Y[i+1])/2),xycoords='data',xytext=(+0,+4),textcoords='offset points')
         plt.plot(X,Y,'ro',X,Y,'r-')
-        plt.axis([13,27,90,100])
-        
+        #plt.axis([13,27,90,100])
         plt.title('運行結果')
         plt.show()
-        
 
 if __name__ == "__main__":
     tsp = TSP(200,50)
