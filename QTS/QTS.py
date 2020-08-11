@@ -2,7 +2,8 @@ import numpy as np
 from math import sqrt,pi,sin,cos
 import matplotlib.pyplot as plt
 import mail
-
+import epanel
+import traceback
 
 class QTS:
     def __init__(self):
@@ -38,9 +39,9 @@ class QTS:
         while weight > self.bag_capacity:        
             r = np.random.randint(0,len(array))
             solution[array[r]] = 0
+            weight -= self.weight[array[r]]
+            value -= self.value[array[r]]
             array = np.delete(array,r)
-            weight -= self.weight[r]
-            value -= self.value[r]
         return weight,value,solution
     def generate_neighbour(self,qbit):
         neighbour = [self.measure(qbit) for i in range(self.population_size)] 
@@ -62,14 +63,14 @@ class QTS:
             qbit[i,:] = np.dot(Ugate,qbit[i,:])
             # T[i] = tabu_itt
         return qbit
-    def qts(self,itt_not_change):
+    def qts(self,itt_not_change,run_times):
         count = 0
         solution = self.measure(self.qbit)
         gbest = self.cal_fitness(solution)[0][1]
         X = []
         Y = []
         i = 0
-        while i < self.iteration and gbest!=620:
+        while i < self.iteration:
             i += 1
             neighbour = self.generate_neighbour(self.qbit)
             fitness = self.cal_fitness(neighbour)
@@ -88,8 +89,9 @@ class QTS:
                 self.qbit = np.zeros((len(self.weight), 2))
                 self.qbit.fill(1/sqrt(2))
             #print('第%s次迭代，最優解是%s' % (i,gbest)) 
+            epanel.epanel_01kp(gbest,list(np.array(neighbour)[:,0]),list(np.array(neighbour)[:,1]),i,self.qbit[:,1],'QTS'+str(run_times))
         print('一共跑了%i世代,第%s世代找出最优解:%s' % (i,count,gbest))
-        return X,Y,gbest,i
+        return X,Y,gbest,i,count
   
 if __name__ == '__main__':
     qts_time = 100
@@ -99,17 +101,21 @@ if __name__ == '__main__':
     try:
         for i in range(qts_time):
             qts = QTS()
-            X,Y,gbest,i = qts.qts(itt_not_change)
-            if i != 5000:
-                avg.append(i)
+            X,Y,gbest,i,i2 = qts.qts(itt_not_change,i)
+            avg.append(i2)
             if gbest == 620:
                 count += 1
-        print('平均第%s世代找到最优解' % str(sum(avg)/len(avg)))
+        if len(avg) == 0:
+            avg2 = 0
+        else:
+            avg2 = sum(avg)/len(avg)
+        print('平均第%s世代找到最优解' % str(avg2))
         avg = []
         print('%s次QTS一共找到%s次最優解' % (str(qts_time),str(count)))
         mail.sendMail('您的程序已经运行完成，请去查看日志结果')
     #plt.figure(figsize=(5,5))
     #plt.plot(X,Y,'r-')
     #plt.show()
-    except:
+    except Exception as e:
+        traceback.print_exc()
         mail.sendMail('您的程序出现错误，请去查看日志结果')
